@@ -1,47 +1,53 @@
-const http = require('http');
-const app = require('./app');
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const authRoute = require("./Routes/AuthRoute");
+const { default: helmet } = require("helmet");
+const bodyParser = require("body-parser");
 
-const normalizePort = val => {
-  const port = parseInt(val, 10);
+require("dotenv").config();
 
-  if (isNaN(port)) {
-    return val;
-  }
-  if (port >= 0) {
-    return port;
-  }
-  return false;
-};
-const port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+const app = express();
+const { MONGO_URI, PORT } = process.env;
 
-const errorHandler = error => {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
-  const address = server.address();
-  const bind = typeof address === 'string' ? 'pipe ' + address : 'port: ' + port;
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges.');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use.');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
-};
+//Middleware
+app.use(cookieParser());
+app.use(express.json());
+app.use(helmet());
 
-const server = http.createServer(app);
+//Routes
+app.use("/", authRoute);
 
-server.on('error', errorHandler);
-server.on('listening', () => {
-  const address = server.address();
-  const bind = typeof address === 'string' ? 'pipe ' + address : 'port ' + port;
-  console.log('Listening on ' + bind);
+//CORS Configuration
+app.use(
+  cors({
+    credentials: true,
+    preflightContinue: true,
+    methods: ["GET", "POST", "PUT", "PATCH" ,"DELETE", "OPTIONS"],
+    origin: ["http://localhost:3000"],
+    allowedHeaders: [
+      "X-Api-Key",
+      "X-Requested-With",
+      "Content-Type",
+      "Accept",
+      "Authorization",
+      "Access-Control-Allow-Origin",
+    "Access-Control-Allow-Credentials",],
+  })
+);
+
+// MongoDB Connection
+mongoose
+  .connect(MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB is  connected successfully"))
+  .catch((err) => console.error(err));
+
+
+//Server Listening
+app.listen(PORT, () => {
+  console.log(`Server is listening on port ${PORT}`);
 });
-
-server.listen(port);
